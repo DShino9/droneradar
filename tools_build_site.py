@@ -136,6 +136,21 @@ if ("serviceWorker" in navigator) {
 '''
 
 
+HEAD = """
+<link rel="manifest" href="./app.webmanifest">
+<meta name="theme-color" content="#0a1420">
+<!-- iOS reads none of the manifest's display settings; it has its own tags,
+     and without them "add to home screen" gives a bookmark that opens Safari
+     with all its furniture rather than the app-like window every other build
+     has. -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="DroneRadar">
+<link rel="apple-touch-icon" href="./icon/icon-192.png">
+<link rel="icon" type="image/png" sizes="192x192" href="./icon/icon-192.png">
+""".lstrip("\n")
+
+
 def main():
     from droneradar import snapshot
 
@@ -166,8 +181,44 @@ def main():
 
     index = os.path.join(OUT, "index.html")
     html = open(index, encoding="utf-8").read()
+    html = html.replace("</head>", HEAD + "</head>", 1)
     html = html.replace("</body>", REGISTER + "</body>", 1)
     open(index, "w", encoding="utf-8").write(html)
+
+    """A manifest, so the page can be installed rather than only visited.
+
+    The other four builds open in a window of their own with an icon in the
+    dock or the launcher; without this the web build is a browser tab, which is
+    the one place the five differ that a reader would actually notice. With it,
+    "add to home screen" on a phone and "install" on a desktop browser give the
+    same chromeless window and the same icon.
+
+    Written here rather than kept in web/ because `start_url` and `scope` have
+    to be relative to wherever this is published, and the Mac app serves the
+    same directory from a different root.
+    """
+    manifest = {
+        "name": "DroneRadar",
+        "short_name": "DroneRadar",
+        "description": "ドローン関連の情報を横断収集するダッシュボード",
+        "start_url": "./",
+        "scope": "./",
+        "display": "standalone",
+        "orientation": "any",
+        "background_color": "#0a1420",
+        "theme_color": "#0a1420",
+        "lang": "ja",
+        "icons": [
+            {"src": "./icon/icon-192.png", "sizes": "192x192", "type": "image/png",
+             "purpose": "any"},
+            {"src": "./icon/icon-512.png", "sizes": "512x512", "type": "image/png",
+             "purpose": "any"},
+            {"src": "./icon/icon-512.png", "sizes": "512x512", "type": "image/png",
+             "purpose": "maskable"},
+        ],
+    }
+    with open(os.path.join(OUT, "app.webmanifest"), "w", encoding="utf-8") as f:
+        json.dump(manifest, f, ensure_ascii=False, indent=2)
 
     # Pages runs Jekyll unless told not to, which drops files it does not
     # recognise and costs a minute per deploy doing it.

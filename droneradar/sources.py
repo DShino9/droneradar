@@ -29,6 +29,18 @@ CATEGORIES = [
 CATEGORY_LABEL = dict(CATEGORIES)
 
 
+def _via_search(site, lang):
+    """A Google News search restricted to one site.
+
+    Used as `fallback=` on publishers whose own feed answers a laptop and
+    refuses a datacenter: Cloudflare turns the hourly collector away with a 403
+    on the address alone, so nothing about the request can be adjusted to get
+    in. Google News indexes the same stories and serves anyone, which makes it
+    a way back to the content rather than a substitute for the source.
+    """
+    return _gnews("site:%s" % site, lang)
+
+
 def _gnews(query, lang):
     """Build a Google News RSS URL for a query."""
     from urllib.parse import quote
@@ -47,7 +59,8 @@ DEFAULT_SOURCES = [
     dict(id="dronejp", name="DRONE.jp", type="rss",
          url="https://www.drone.jp/feed/", category="jp_news", lang="ja"),
     dict(id="dronetribune", name="DroneTribune", type="rss",
-         url="https://dronetribune.jp/feed/", category="jp_news", lang="ja"),
+         url="https://dronetribune.jp/feed/", category="jp_news", lang="ja",
+         fallback=_via_search("dronetribune.jp", "ja")),
     dict(id="sorabatake", name="宙畑", type="rss",
          url="https://sorabatake.jp/feed/", category="jp_news", lang="ja"),
     dict(id="gn_drone_ja", name="Googleニュース「ドローン」", type="rss",
@@ -76,11 +89,14 @@ DEFAULT_SOURCES = [
     dict(id="dronedj", name="DroneDJ", type="rss",
          url="https://dronedj.com/feed/", category="world_news", lang="en"),
     dict(id="dronelife", name="DroneLife", type="rss",
-         url="https://dronelife.com/feed/", category="world_news", lang="en"),
+         url="https://dronelife.com/feed/", category="world_news", lang="en",
+         fallback=_via_search("dronelife.com", "en")),
     dict(id="suasnews", name="sUAS News", type="rss",
-         url="https://www.suasnews.com/feed/", category="world_news", lang="en"),
+         url="https://www.suasnews.com/feed/", category="world_news", lang="en",
+         fallback=_via_search("suasnews.com", "en")),
     dict(id="dronegirl", name="The Drone Girl", type="rss",
-         url="https://www.thedronegirl.com/feed/", category="world_news", lang="en"),
+         url="https://www.thedronegirl.com/feed/", category="world_news", lang="en",
+         fallback=_via_search("thedronegirl.com", "en")),
     dict(id="uasvision", name="UAS Vision", type="rss",
          url="https://www.uasvision.com/feed/", category="world_news", lang="en"),
     dict(id="gn_drone_en", name="Google News \"drone\"", type="rss",
@@ -91,7 +107,8 @@ DEFAULT_SOURCES = [
          url="https://newatlas.com/drones/index.rss",
          category="world_news", lang="en"),
     dict(id="verticalmag", name="Vertical Magazine", type="rss",
-         url="https://verticalmag.com/feed/", category="world_news", lang="en"),
+         url="https://verticalmag.com/feed/", category="world_news", lang="en",
+         fallback=_via_search("verticalmag.com", "en")),
     dict(id="droneii", name="Drone Industry Insights", type="rss",
          url="https://droneii.com/feed", category="business", lang="en"),
     dict(id="dronebelow", name="Drone Below", type="rss",

@@ -43,7 +43,7 @@ _write_lock = threading.Lock()
 # status back in at save time instead, leaving room for adds mid-run.
 sources_lock = threading.RLock()
 
-STATUS_FIELDS = ("error", "last_ok", "last_count")
+STATUS_FIELDS = ("error", "last_ok", "last_count", "via")
 
 # Separator fetch_github puts between `owner/repo` and the repo description.
 REPO_SEP = " — "
@@ -638,10 +638,31 @@ def cluster(items):
 # --------------------------------------------------------------------------
 
 def _fetch_one(source):
+    """Fetch a source, falling back to a search feed if the site refuses us.
+
+    Five publishers answer this Mac and refuse the machine that runs the hourly
+    collection: Cloudflare returns 403 to datacenter addresses whatever the
+    user agent says, so it is the IP being turned away and nothing here can
+    talk it round. Their stories are still reachable — Google News indexes them
+    and answers everyone — so a source may carry a `fallback` URL that is tried
+    only when the direct one fails.
+
+    Only when it fails. On a machine the publisher is happy to serve, the
+    direct feed is richer and arrives sooner, so the fallback stays unused.
+    """
     fn = scrapers.ARTICLE_FETCHERS.get(source.get("type"))
     if fn is None:
         raise FetchError("未対応のソース種別: %s" % source.get("type"))
-    return fn(source)
+    try:
+        return fn(source)
+    except Exception:
+        alt = source.get("fallback")
+        if not alt:
+            raise
+        # A search feed is always plain RSS, whatever the original type was.
+        entries = scrapers.ARTICLE_FETCHERS["rss"]({**source, "type": "rss", "url": alt})
+        source["_via_fallback"] = True
+        return entries
 
 
 def collect_articles(log=None):
@@ -673,7 +694,13 @@ def collect_articles(log=None):
             s["error"] = ""
             s["last_ok"] = net.now()
             s["last_count"] = kept
-            log("○ %s — %d件" % (s["name"], kept))
+            # Say so when the direct feed was refused. The panel would
+            # otherwise show a healthy green cell for a source that is only
+            # reachable second-hand, which is worth knowing.
+            via = s.pop("_via_fallback", False)
+            s["via"] = "search" if via else ""
+            log("%s %s — %d件%s" % ("○" if not via else "◇", s["name"], kept,
+                                    "（検索経由）" if via else ""))
 
     # Merge with what we already have, keeping user state (bookmarks, seen).
     existing = load_json("items.json", [])

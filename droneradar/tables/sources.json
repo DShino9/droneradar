@@ -92,7 +92,8 @@
    "type": "rss",
    "url": "https://dronetribune.jp/feed/",
    "category": "jp_news",
-   "lang": "ja"
+   "lang": "ja",
+   "fallback": "https://news.google.com/rss/search?q=site%3Adronetribune.jp&hl=ja&gl=JP&ceid=JP:ja"
   },
   {
    "id": "sorabatake",
@@ -172,7 +173,8 @@
    "type": "rss",
    "url": "https://dronelife.com/feed/",
    "category": "world_news",
-   "lang": "en"
+   "lang": "en",
+   "fallback": "https://news.google.com/rss/search?q=site%3Adronelife.com&hl=en-US&gl=US&ceid=US:en"
   },
   {
    "id": "suasnews",
@@ -180,7 +182,8 @@
    "type": "rss",
    "url": "https://www.suasnews.com/feed/",
    "category": "world_news",
-   "lang": "en"
+   "lang": "en",
+   "fallback": "https://news.google.com/rss/search?q=site%3Asuasnews.com&hl=en-US&gl=US&ceid=US:en"
   },
   {
    "id": "dronegirl",
@@ -188,7 +191,8 @@
    "type": "rss",
    "url": "https://www.thedronegirl.com/feed/",
    "category": "world_news",
-   "lang": "en"
+   "lang": "en",
+   "fallback": "https://news.google.com/rss/search?q=site%3Athedronegirl.com&hl=en-US&gl=US&ceid=US:en"
   },
   {
    "id": "uasvision",
@@ -220,7 +224,8 @@
    "type": "rss",
    "url": "https://verticalmag.com/feed/",
    "category": "world_news",
-   "lang": "en"
+   "lang": "en",
+   "fallback": "https://news.google.com/rss/search?q=site%3Averticalmag.com&hl=en-US&gl=US&ceid=US:en"
   },
   {
    "id": "droneii",
