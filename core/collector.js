@@ -15,12 +15,58 @@ import * as geo from "./geo.js";
 
 const REPO_SEP = " — ";
 
+/* Fold newly-shipped built-in sources into what was saved.
+
+   Ported from collector.py's merge_builtins. Without it the saved list always
+   wins, so a source added to the catalogue after first run never appears — and
+   neither does a new field on a source that is already there, which is subtler
+   and was how the search fallback came to be shipped and then ignored: the
+   code was right and the data it ran on was a version behind.
+
+   The list below is the set of fields the catalogue owns. `enabled` is not in
+   it, because that one belongs to whoever switched it off. */
+const OWNED = ["name", "type", "url", "query", "category", "lang", "strict", "fallback"];
+
+function mergeBuiltins(stored, defaults) {
+  if (!stored) return defaults.map((s) => ({ ...s, enabled: true }));
+  const byId = new Map(stored.map((s) => [s.id, s]));
+  for (const d of defaults) {
+    const cur = byId.get(d.id);
+    if (!cur) { stored.push({ ...d, enabled: true }); continue; }
+    for (const key of OWNED) if (key in d) cur[key] = d[key];
+    // A route withdrawn from the catalogue should not live on in saved data.
+    if (!("fallback" in d)) delete cur.fallback;
+    cur.builtin = true;
+  }
+  return stored;
+}
+
+/* Fetch a source, falling back to a search feed if the site refuses us.
+
+   Ported from collector.py's _fetch_one. Five publishers answer a laptop and
+   refuse a datacenter — Cloudflare returns 403 on the address alone, so no
+   header changes it — and Google News indexes the same stories for anyone. The
+   fallback is tried only on failure, so where the direct feed works, it is the
+   direct feed that is used: it is richer and it arrives sooner. */
+async function fetchSource(source) {
+  const fetcher = ARTICLE_FETCHERS[source.type];
+  if (!fetcher) throw new Error("未知の種別: " + source.type);
+  try {
+    return { entries: await fetcher(source), viaFallback: false };
+  } catch (e) {
+    if (!source.fallback) throw e;
+    // A search feed is plain RSS, whatever the original type was.
+    const entries = await ARTICLE_FETCHERS.rss({ ...source, type: "rss", url: source.fallback });
+    return { entries, viaFallback: true };
+  }
+}
+
 export async function collectArticles({ store, tables, config = {}, log = () => {}, concurrency = 6 }) {
   geo.init(tables.geo);
   const terms = tables.terms;
 
   const stored = await store.get("sources", null);
-  const sources = stored || tables.sources.sources.map((s) => ({ ...s, enabled: true }));
+  const sources = mergeBuiltins(stored, tables.sources.sources);
   const live = sources.filter((s) => s.enabled !== false);
 
   const fresh = [];
@@ -30,10 +76,16 @@ export async function collectArticles({ store, tables, config = {}, log = () => 
   async function worker() {
     while (at < live.length) {
       const source = live[at++];
-      const fetcher = ARTICLE_FETCHERS[source.type];
-      if (!fetcher) { source.error = "未知の種別: " + source.type; continue; }
+      let entries, viaFallback;
       try {
-        const entries = await fetcher(source);
+        ({ entries, viaFallback } = await fetchSource(source));
+      } catch (e) {
+        source.error = String(e.message || e).slice(0, 120);
+        source.last_count = 0;
+        log(`× ${source.name} — ${source.error}`);
+        continue;
+      }
+      try {
         let kept = 0;
         for (const entry of entries) {
           const it = normalise(entry, source, config, terms);
@@ -42,7 +94,9 @@ export async function collectArticles({ store, tables, config = {}, log = () => 
         source.last_ok = now();
         source.last_count = kept;
         source.error = "";
-        log(`○ ${source.name} — ${kept}件`);
+        source.via = viaFallback ? "search" : "";
+        log(`${viaFallback ? "◇" : "○"} ${source.name} — ${kept}件` +
+            (viaFallback ? "（検索経由）" : ""));
       } catch (e) {
         source.error = String(e.message || e).slice(0, 120);
         log(`× ${source.name} — ${source.error}`);
