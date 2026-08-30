@@ -1,0 +1,18 @@
+# 収集した中身はリポジトリに置かない。data ブランチが持つ。
+data/
+site/
+
+# 端末ごとに作り直せるもの
+build/
+mobile/node_modules/
+mobile/www/
+mobile/android/
+mobile/ios/
+mobile/keys/
+.DS_Store
+__pycache__/
+*.pyc
+
+# YouTube のページを丸ごと保存した下調べ用の残骸。1.2MB あり、どこからも
+# 参照されていない。公開リポジトリに置く理由がない。
+yt.html

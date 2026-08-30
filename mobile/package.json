@@ -1,0 +1,12 @@
+{
+  "name": "droneradar-mobile",
+  "version": "1.0.0",
+  "private": true,
+  "description": "DroneRadar の iOS / Android 用の殻。中身は共通の web/ と core/。",
+  "dependencies": {
+    "@capacitor/android": "^8.5.0",
+    "@capacitor/cli": "^8.5.0",
+    "@capacitor/core": "^8.5.0",
+    "@capacitor/ios": "^8.5.0"
+  }
+}

@@ -1,0 +1,87 @@
+name: collect
+
+# 毎時07分。00分は世界中のcronが殺到して遅れるので少しずらす。
+on:
+  schedule:
+    - cron: "7 * * * *"
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths-ignore: ["README.md", "SPEC.md"]
+
+permissions:
+  contents: write   # data ブランチへの保存
+  pages: write
+  id-token: write
+
+# 前の回がまだ走っているうちに次を始めない。両方が data ブランチに
+# 書こうとして、片方の収集がまるごと消える。
+concurrency:
+  group: droneradar-collect
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      # 収集は積み上げ。items.json には前回までの記事が入っていて、新しい
+      # 取得分はそこへ差分で合流する（collector.py が bookmarked と seen を
+      # 引き継ぐ）。translations.json も同じで、ここが空だと毎回すべての
+      # 見出しを訳し直すことになり、翻訳の口が先に音を上げる。
+      # ランナーは毎回作り直されるので、前回の状態は data ブランチから戻す。
+      - name: 前回のデータを戻す
+        run: |
+          mkdir -p data
+          if git ls-remote --exit-code --heads origin data >/dev/null 2>&1; then
+            git fetch --depth 1 origin data:refs/remotes/origin/data
+            git worktree add _prev origin/data
+            cp _prev/*.json data/ 2>/dev/null || true
+            git worktree remove _prev --force
+            echo "戻した: $(ls -1 data | tr '\n' ' ')"
+          else
+            echo "data ブランチはまだ無い。初回として空から始める"
+          fi
+
+      - name: 収集
+        env:
+          DRONERADAR_DATA: ${{ github.workspace }}/data
+        run: python3 tools_collect_once.py
+
+      - name: 公開用に固める
+        env:
+          DRONERADAR_DATA: ${{ github.workspace }}/data
+        run: python3 tools_build_site.py
+
+      # 履歴は持たない。毎回まっさらな1コミットで置き換える。
+      # 時間ごとに3.5MBのスナップショットを積むと、要りもしない過去のために
+      # リポジトリだけが際限なく太る。要るのは「直前の状態」ひとつだけ。
+      - name: データを保存する
+        run: |
+          cd data
+          rm -rf images .git
+          git init -q -b data
+          git config user.name  "droneradar"
+          git config user.email "droneradar@users.noreply.github.com"
+          git add -A -- '*.json'
+          git commit -qm "収集 $(date -u '+%Y-%m-%d %H:%M')Z"
+          git push -q --force \
+            "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" \
+            data
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,10 @@
+{
+  "appId": "local.droneradar",
+  "appName": "DroneRadar",
+  "webDir": "www",
+  "android": { "allowMixedContent": true },
+  "server": { "androidScheme": "https" },
+  "plugins": {
+    "CapacitorHttp": { "enabled": true }
+  }
+}
