@@ -208,10 +208,21 @@ def merge_builtins(stored, defaults):
             stored.append(dict(d))
         else:
             # Refresh the fields we own; leave the user's toggle alone.
+            #
+            # `fallback` has to be in this list. It was added to the catalogue
+            # after the saved file existed, so without it the stored copy went
+            # on knowing nothing about the alternate route and the five
+            # publishers stayed dark — the code was right and the data it ran
+            # on was a version behind. Anything added here later has the same
+            # problem, which is what the list is for.
             for key in ("name", "type", "url", "query", "category",
-                        "lang", "strict"):
+                        "lang", "strict", "fallback"):
                 if key in d:
                     cur[key] = d[key]
+            # And drop it from sources that no longer ship one, so a route
+            # withdrawn from the catalogue does not live on in saved data.
+            if "fallback" not in d:
+                cur.pop("fallback", None)
             cur["builtin"] = True
     return stored
 
