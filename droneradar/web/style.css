@@ -1455,6 +1455,13 @@ h3.sec { font-size: 15px; margin: 22px 0 8px; }
   .topbar input[type="search"], .topbar .search input { width: 132px; min-width: 0; }
   .shell {
     grid-template-columns: 1fr;
+    /* Named rows, and align-content:start. Left implicit, the two auto rows
+       split the shell's leftover height evenly between them — the chip strip
+       came out 239px tall around 42px of chips, and the whole page below it
+       started a quarter of the way down the screen. It only showed up once
+       the content was short enough to leave any slack. */
+    grid-template-rows: auto minmax(0, 1fr);
+    align-content: start;
     height: calc(100vh - var(--topbar));
     height: calc(100dvh - var(--topbar));   /* dvh: iOS's bar comes and goes */
     overflow: hidden;
@@ -1521,6 +1528,11 @@ h3.sec { font-size: 15px; margin: 22px 0 8px; }
   body.show-visuals .graphics {
     display: flex; flex-direction: column; gap: 8px;
     flex: 1; min-height: 0; overflow-y: auto; padding: 8px;
+    /* The band's own cap — 344px on the desktop, 38vh below 1200px — still
+       applied here and pinned the column at 321px with 426px of empty screen
+       under it. The cap is for a band sharing the page with the list; this is
+       the whole page. */
+    max-height: none;
   }
   body.show-visuals .graphics > * { flex: none; }
   /* The two maps get a square-ish share of the screen each; without a cap the
