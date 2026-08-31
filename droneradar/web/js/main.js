@@ -108,6 +108,10 @@ function wire() {
      button beside it was phrased as a state. */
   const applyGraphics = (shown) => {
     graphics.classList.toggle("hidden", !shown);
+    // On a phone the visuals are put away by the stylesheet, not by this
+    // class, so the switch has to say so on the body for that rule to lift.
+    // Same switch, same meaning, in the one place a phone has room to obey it.
+    document.body.classList.toggle("show-visuals", shown);
     gToggle.classList.toggle("on", shown);
     gToggle.setAttribute("aria-pressed", String(shown));
     localStorage.setItem("dr.graphics", shown ? "1" : "0");
