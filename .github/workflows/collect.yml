@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths-ignore: ["README.md", "SPEC.md"]
+    paths-ignore: ["README.md", "SPEC.md", "仕様書.md", "仕様/**", "課題/**"]
 
 permissions:
   contents: write   # data ブランチへの保存
