@@ -177,22 +177,21 @@ function renderRadar(items) {
   const FRESH_GRACE = 12 * 3600;
   const isFresh = (it, age) => S.freshItems.has(it.id) && age < FRESH_GRACE;
 
-  // Only the items that will actually be plotted decide the scale. Measuring
-  // every article put the 90th percentile days out and pinned the dial to 24h,
-  // which bunched everything back at the centre — and leaving the new arrivals
-  // out of the measurement was the other half of the ring: the scale was set
-  // by items younger than the ones being drawn past the end of it.
-  const PLOT_MAX = 90;
+  /* The scale is the narrowest window that holds a dial's worth of contacts.
+
+     It used to be the 90th percentile of the ninety youngest ages. GitHub
+     pushes and posts arrive by the dozen every half hour, so the ninety
+     youngest always sat within about thirty minutes of each other — and when
+     collection lagged a few hours, that half hour sat 3.4 hours out on a 6
+     hour dial and every blip drew the same circle. */
+  const PLOT_MIN = 48;
   const ages = [
-    ...items.map((it) => nowSec - it.published)
-      .filter((a) => a >= 0),
-    ...items.filter((it) => S.freshItems.has(it.id))
-      .map((it) => nowSec - it.published)
-      .filter((a) => a >= 0 && a < FRESH_GRACE),
+    ...items.map((it) => nowSec - it.published),
     ...S.social.map((p) => nowSec - (p.created || 0)),
-  ].filter((a) => a >= 0).sort((a, b) => a - b).slice(0, PLOT_MAX);
-  const p90 = ages.length ? ages[Math.floor((ages.length - 1) * 0.9)] : 3600;
-  const chosen = WINDOW_CHOICES.find(([w]) => w >= p90) || WINDOW_CHOICES[WINDOW_CHOICES.length - 1];
+  ].filter((a) => a >= 0);
+  const chosen = WINDOW_CHOICES.find(([w]) =>
+    ages.filter((a) => a < w).length >= PLOT_MIN)
+    || WINDOW_CHOICES[WINDOW_CHOICES.length - 1];
   const WINDOW = chosen[0];
   const RING_MINUTES = chosen[1];
   const recent = [];
@@ -240,13 +239,27 @@ function renderRadar(items) {
      drone news. So each kind gets its own share of the cap, and whatever one
      does not use goes to the other. */
   const ART_SHARE = 0.55;
+  /* Spread over the window by publication time, not the youngest N.
+
+     Taking the youngest N packed every blip into the newest half hour — one
+     ring on the dial. Taking every k-th by age keeps the newest and the oldest
+     and spaces the rest between them, so range reads as age again. */
+  const thin = (pool, room) => {
+    if (pool.length <= room) return pool;
+    if (room <= 1) return pool.slice(0, room);
+    const out = [];
+    for (let i = 0; i < room; i++) {
+      out.push(pool[Math.round(i * (pool.length - 1) / (room - 1))]);
+    }
+    return out;
+  };
   const pick = (pool, room) => {
     const f = pool.filter((b) => b.fresh);
-    // A new arrival is never the one dropped; the oldest ordinary contact goes.
+    // A new arrival is never the one dropped; the others are thinned evenly.
     return f.length
-      ? f.slice(0, room).concat(pool.filter((b) => !b.fresh)
-          .slice(0, Math.max(0, room - f.length)))
-      : pool.slice(0, room);
+      ? f.slice(0, room).concat(thin(pool.filter((b) => !b.fresh),
+          Math.max(0, room - f.length)))
+      : thin(pool, room);
   };
   const arts = recent.filter((b) => b.kind !== "soc");
   const socs = recent.filter((b) => b.kind === "soc");
