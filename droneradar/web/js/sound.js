@@ -22,6 +22,23 @@ function loadPing() {
     .catch(() => { pingLoading = false; });
 }
 
+// Audio needs a gesture before it will start; main takes the first one that
+// comes and hands it here. It lives in this module because audioCtx is an
+// import binding elsewhere, and assigning one throws — main.js did exactly
+// that, so the first gesture never got as far as loadPing().
+function armAudio() {
+  try {
+    if (audioCtx) audioCtx.resume();
+    else {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) audioCtx = new AC();
+    }
+    // Fetch and decode now rather than on the first arrival, which would
+    // otherwise be silent while the file came off disk.
+    loadPing();
+  } catch (_) { /* audio is a nicety */ }
+}
+
 function sonarPing() {
   try {
     const AC = window.AudioContext || window.webkitAudioContext;
@@ -50,4 +67,4 @@ function sonarPing() {
   } catch (_) { /* audio is a nicety; never let it break a render */ }
 }
 
-export { audioCtx, loadPing, pingBuffer, pingLoading, sonarPing };
+export { armAudio, audioCtx, loadPing, pingBuffer, pingLoading, sonarPing };

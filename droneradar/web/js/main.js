@@ -8,7 +8,7 @@ import { SPOTLIGHT_MS, renderMap, spotlight } from "./maps.js";
 import { renderCalendar, setupCalendarPager } from "./calendar.js";
 import { renderRadar } from "./radar.js";
 import { renderCards } from "./cards.js";
-import { audioCtx, loadPing } from "./sound.js";
+import { armAudio } from "./sound.js";
 import { renderPlayer, syncPlayingId, watchPlayerStall } from "./player.js";
 import { renderTicker } from "./ticker.js";
 import { renderStocks } from "./stocks.js";
@@ -65,16 +65,6 @@ function wire() {
   // Identical on every platform, so the desktop build tests the TV build.
   setupRemote();
   // Audio needs a gesture before it will start; take the first one that comes.
-  const armAudio = () => {
-    if (audioCtx) audioCtx.resume();
-    else {
-      const AC = window.AudioContext || window.webkitAudioContext;
-      if (AC) audioCtx = new AC();
-    }
-    // Fetch and decode now rather than on the first arrival, which would
-    // otherwise be silent while the file came off disk.
-    loadPing();
-  };
   addEventListener("pointerdown", armAudio, { once: true });
   addEventListener("keydown", armAudio, { once: true });
 
