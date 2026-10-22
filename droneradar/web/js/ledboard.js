@@ -165,14 +165,20 @@ function setupLedDrag() {
     // transform written below was computed and then thrown away.
     track.style.animationName = "none";
     track.style.transform = `translateX(${startPos.toFixed(1)}px)`;
-    win.setPointerCapture(e.pointerId);
-    win.classList.add("dragging");
+    // Not captured yet. A captured pointer's click is delivered to the capture
+    // target, so capturing here sent every tap to .led-window instead of the
+    // headline under the finger and no headline ever opened. Capture only once
+    // the press has turned into a drag.
   });
 
   win.addEventListener("pointermove", (e) => {
     if (!dragging) return;
     const dx = e.clientX - startX;
     moved = Math.max(moved, Math.abs(dx));
+    if (moved > 4 && !win.hasPointerCapture?.(e.pointerId)) {
+      win.setPointerCapture(e.pointerId);
+      win.classList.add("dragging");
+    }
     track.style.transform = `translateX(${wrap(startPos + dx).toFixed(1)}px)`;
   });
 
@@ -194,6 +200,8 @@ function setupLedDrag() {
   };
   win.addEventListener("pointerup", release);
   win.addEventListener("pointercancel", release);
+  // Uncaptured, a press that slides off the board never sends pointerup here.
+  win.addEventListener("pointerleave", release);
   // A drag that happens to finish on a headline must not also open it.
   win.addEventListener("click", (e) => {
     if (moved > 4) { e.stopPropagation(); e.preventDefault(); }
